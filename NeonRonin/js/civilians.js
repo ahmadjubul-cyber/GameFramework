@@ -118,7 +118,7 @@
 
   NR.Civilians = class {
     constructor(G) { this.G = G; this.list = []; }
-    target() { const s = this.G.settings.civilians; return s === 0 ? 0 : s === 2 ? 34 : 20; }
+    target() { const s = +this.G.settings.civilians; const n = s === 0 ? 0 : s === 2 ? 34 : 20; return this.G.settings.quality === 'low' ? Math.round(n * 0.5) : n; }
     clear() { this.list.forEach((c) => c.dispose()); this.list.length = 0; }
     update(dt) {
       const G = this.G;

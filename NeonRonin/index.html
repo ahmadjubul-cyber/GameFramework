@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07080b">
 <title>Neon Ronin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -26,7 +29,7 @@
     <button class="btn big" data-a="title-ctl">Controls</button>
     <button class="btn big" data-a="title-cred">Credits</button>
   </div>
-  <div class="foot">Keyboard + mouse · Headphones recommended</div>
+  <div class="foot"><span class="k">Keyboard + mouse · Headphones recommended</span><span class="t">Touch controls · Play in landscape · Headphones recommended</span></div>
 </div>
 
 <!-- ============ HUD ============ -->
@@ -92,11 +95,13 @@
 <div id="modal"><div id="modal-box" class="modal-box"></div></div>
 <div id="map-wrap"><canvas id="map-canvas" width="700" height="700"></canvas></div>
 <div id="creator"><div id="creator-panel"></div><div class="creator-tip">Drag to rotate · scroll to zoom</div></div>
+<div id="skip-btn">SKIP ›</div>
 <div id="errbox"></div>
 
 <script src="lib/three.min.js"></script>
 <script src="js/util.js"></script>
 <script src="js/input.js"></script>
+<script src="js/touch.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/data/weapons.js"></script>
 <script src="js/data/powers.js"></script>

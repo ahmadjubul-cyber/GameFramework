@@ -14,7 +14,8 @@
     constructor(G) { this.G = G; }
 
     static defaultSettings() {
-      return { difficulty: 'normal', sens: 1, invertY: false, master: 0.8, music: 0.55, sfx: 0.85, fov: 70, rain: true, civilians: 1, traffic: 1, quality: 'high', hints: true, camDist: 1 };
+      const mobile = NR.Touch && NR.Touch.detect();
+      return { difficulty: 'normal', sens: 1, invertY: false, master: 0.8, music: 0.55, sfx: 0.85, fov: mobile ? 75 : 70, rain: true, civilians: 1, traffic: 1, quality: mobile ? 'low' : 'high', hints: true, camDist: 1 };
     }
     static loadSettings() {
       try { const s = JSON.parse(localStorage.getItem(SET_KEY)); return Object.assign(NR.Prog.defaultSettings(), s || {}); } catch (e) { return NR.Prog.defaultSettings(); }

@@ -98,7 +98,7 @@
 
       // ----- input
       let ix = 0, iz = 0;
-      if (!busy) { ix = I.axis('KeyA', 'KeyD'); iz = I.axis('KeyS', 'KeyW'); }
+      if (!busy) { ix = I.moveX(); iz = I.moveY(); }
       const cy = G.camRig.yaw;
       const fx = Math.sin(cy), fz = Math.cos(cy);
       const rx = -fz, rz = fx;
@@ -106,7 +106,7 @@
       const wl = Math.hypot(wx, wz);
       if (wl > 1) { wx /= wl; wz /= wl; }
       const moving = wl > 0.1;
-      const sprint = !busy && I.down('ShiftLeft') && moving && !this.aiming && !this.blocking;
+      const sprint = !busy && I.sprintHeld() && moving && !this.aiming && !this.blocking;
       this.sprinting = sprint;
 
       // weapon switching and power selection
@@ -336,12 +336,12 @@
       const c = this.climb, b = c.box;
       const rate = 4.4 * (1 + 0.4 * G.prog.skill('swift_climb')) * (sprint ? 1.45 : 1);
       let vy = 0;
-      if (I.down('KeyW') || (I.down('Space') && !I.down('KeyS'))) vy = rate;
-      else if (I.down('KeyS')) vy = -rate;
+      if (iz > 0.3 || (I.down('Space') && iz > -0.3)) vy = rate * Math.max(Math.min(1, Math.abs(iz) * 1.2), I.down('Space') ? 1 : 0);
+      else if (iz < -0.3) vy = -rate;
       const tx = c.nz, tz = -c.nx; // right along the face
       const lat = ix * rate * 0.75;
       // wall jump / drop
-      if (I.hit('Space') && I.down('KeyS')) {
+      if (I.hit('Space') && iz < -0.3) {
         this.climb = null; this.state = 'air';
         this.vel.set(c.nx * 7.5, 7.5, c.nz * 7.5);
         this.yaw = Math.atan2(c.nx, c.nz); this.airMaxY = this.pos.y;

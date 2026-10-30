@@ -332,6 +332,8 @@
       this.el = { box: $('dialogue'), name: $('dlg-name'), text: $('dlg-text'), port: $('dlg-portrait'), comms: $('comms'), cName: $('comms-name'), cText: $('comms-text'), cPort: $('comms-portrait'), panel: $('panel'), pcv: $('panel-canvas'), ptitle: $('panel-title'), ptext: $('panel-text'), skip: $('skip-hint') };
       this.el.box.addEventListener('click', () => this.advance());
       this.el.panel.addEventListener('click', () => this.advancePanel());
+      this.skipBtn = $('skip-btn');
+      this.skipBtn.addEventListener('click', (e) => { e.stopPropagation(); this.skipAll(); });
     }
     speaker(who) {
       const G = this.G;
@@ -458,6 +460,7 @@
       const G = this.G;
       // input for dialogue / panels (works while game input is blocked)
       const adv = I.pressed['Space'] || I.pressed['KeyE'] || I.pressed['Enter'];
+      this.skipBtn.classList.toggle('show', !!(this.dlg || this.panel));
       if (I.pressed['Escape'] && (this.dlg || this.panel)) { delete I.pressed['Escape']; this.skipAll(); }
       if (this.panel) {
         const p = this.panel;

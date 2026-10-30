@@ -5,6 +5,7 @@
     mb: [false, false, false], mbPressed: [false, false, false], mbReleased: [false, false, false],
     dx: 0, dy: 0, wheel: 0, locked: false, canvas: null, enabled: true,
     mouseX: 0, mouseY: 0,
+    joyX: 0, joyY: 0, joySprint: false, touchLook: false,
   };
 
   I.init = function (canvas) {
@@ -22,7 +23,7 @@
     });
     window.addEventListener('blur', () => { I.keys = {}; I.mb = [false, false, false]; });
     canvas.addEventListener('mousedown', (e) => {
-      if (I.wantLock && !I.locked) I.requestLock();
+      if (I.wantLock && !I.locked && !I.touchLook) I.requestLock();
       I.mb[e.button] = true; I.mbPressed[e.button] = true;
     });
     window.addEventListener('mouseup', (e) => { I.mb[e.button] = false; I.mbReleased[e.button] = true; });
@@ -50,6 +51,10 @@
   I.click = (b) => I.enabled && I.mbPressed[b];
   I.mouseUp = (b) => I.enabled && I.mbReleased[b];
   I.axis = (neg, pos) => (I.down(pos) ? 1 : 0) - (I.down(neg) ? 1 : 0);
+  // keyboard axis, falling back to the analog touch stick
+  I.moveX = () => I.axis('KeyA', 'KeyD') || (I.enabled ? I.joyX : 0);
+  I.moveY = () => I.axis('KeyS', 'KeyW') || (I.enabled ? I.joyY : 0);
+  I.sprintHeld = () => I.down('ShiftLeft') || I.down('ShiftRight') || (I.enabled && I.joySprint);
 
   I.endFrame = function () {
     I.pressed = {}; I.released = {};

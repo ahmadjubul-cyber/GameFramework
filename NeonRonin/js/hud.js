@@ -66,7 +66,7 @@
     }
     banner(t, s, color) {
       const b = this.el.banner;
-      this.el['banner-t'].textContent = t; this.el['banner-s'].textContent = s || '';
+      this.el['banner-t'].textContent = t; this.el['banner-s'].textContent = NR.Touch.text(s || '');
       this.el['banner-t'].style.color = color || '#fff'; this.el['banner-t'].style.textShadow = '0 0 20px ' + (color || '#fff');
       b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
       clearTimeout(this.bannerTO); this.bannerTO = setTimeout(() => b.classList.remove('show'), 2800);
@@ -74,7 +74,7 @@
     hint(html) {
       const h = this.el.hint;
       if (!html) { h.classList.remove('show'); return; }
-      this.el['hint-text'].innerHTML = html; h.classList.add('show');
+      this.el['hint-text'].innerHTML = NR.Touch.text(html); h.classList.add('show');
     }
     xpPop(n) {
       const e = this.el.xppop; e.textContent = '+' + n + ' XP';
@@ -104,7 +104,7 @@
     prompt(text) {
       if (this.lastPrompt === text) return;
       this.lastPrompt = text;
-      this.el.prompt.innerHTML = text || '';
+      this.el.prompt.innerHTML = NR.Touch.text(text) || '';
       this.el.prompt.classList.toggle('show', !!text);
     }
     show(v) { this.el.hud.style.display = v ? '' : 'none'; }

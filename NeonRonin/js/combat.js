@@ -120,7 +120,7 @@
       const tw = wh ? wh.t : 300;
       const hits = [];
       for (const h of this.hittables()) {
-        const t = U.rayCylinder(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, h.pos.x, h.pos.y, h.pos.z, h.radius, h.height, tw);
+        const t = U.rayCylinder(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, h.pos.x, h.pos.y, h.pos.z, h.radius + (NR.Touch.enabled ? 0.45 : 0), h.height, tw);
         if (t >= 0 && t >= skipNear * 0.9) hits.push({ t, h });
       }
       hits.sort((a, b) => a.t - b.t);

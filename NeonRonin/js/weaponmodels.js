@@ -20,7 +20,7 @@
   function hilt(g, len, wrap, guard) {
     box(g, 0.036, 0.036, len, 0, 0, len / 2 - 0.08, wrap || 0x1a1a22);
     for (let i = 0; i < 4; i++) box(g, 0.04, 0.04, 0.012, 0, 0, -0.04 + i * (len / 4), 0x6a5a3a);
-    if (guard !== false) box(g, 0.1, 0.1, 0.018, 0, 0, len - 0.07, guard || 0xd4af37);
+    if (guard !== false) box(g, 0.07, 0.07, 0.014, 0, 0, len - 0.07, guard || 0x9a8450);
     return len - 0.06;
   }
 

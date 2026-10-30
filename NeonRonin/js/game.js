@@ -26,7 +26,7 @@
         // keep yaw consistent so gameplay resumes facing the same way
         return;
       }
-      const locked = I.locked && !G.inputBlocked;
+      const locked = (I.locked || I.touchLook) && !G.inputBlocked;
       const sens = 0.0022 * (S.sens || 1) * (P.aiming ? 0.6 / (P.weapon() && P.weapon().zoom || 1) : 1);
       if (locked) {
         this.yaw -= I.dx * sens;
@@ -34,6 +34,10 @@
         if (I.dx || I.dy) this.idleT = 0;
       }
       this.idleT += dt;
+      // touch: gently swing the camera behind the runner when the player isn't steering the view
+      if (I.touchLook && !this.vehicle && !P.aiming && !P.climb && this.idleT > 1.2 && Math.abs(I.joyY) > 0.3 && Math.abs(I.joyX) < 0.6 && P.state === 'ground') {
+        this.yaw = U.dampAngle(this.yaw, P.yaw, 0.9, dt);
+      }
       this.pitch = U.clamp(this.pitch, -1.2, 1.15);
       const v = this.vehicle;
       let target, dist, shoulder = 0, fov = S.fov || 70;
@@ -101,10 +105,13 @@
 
   G.init = function () {
     const canvas = $('game');
-    const renderer = G.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    const mobile = NR.Touch.detect();
+    const renderer = G.renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputEncoding = THREE.sRGBEncoding;
     G.settings = NR.Prog.loadSettings();
+    NR.Humanoid.lowQuality = G.settings.quality === 'low';
+    NR.Touch.init(G);
     G.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 4000);
     I.init(canvas);
     I.onUnlock = () => { if (G.state === 'play' && !G.menuOpen && !G.cutscene.blocking) G.menus.pause(); };
@@ -120,9 +127,9 @@
     scene.add(new THREE.HemisphereLight(0x8090b0, 0x0a0a10, 0.4));
     const moonL = new THREE.DirectionalLight(0xb0bcd0, 0.38); moonL.position.set(-300, 400, -200); scene.add(moonL);
     const sky = new THREE.Mesh(new THREE.SphereGeometry(3000, 24, 16), new THREE.MeshBasicMaterial({ map: NR.Tex.sky, side: THREE.BackSide, fog: false }));
-    scene.add(sky);
+    G.skyGroup = new THREE.Group(); G.skyGroup.add(sky); scene.add(G.skyGroup);
     const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: NR.Tex.glow, color: 0xffe9d0, fog: false }));
-    moon.position.set(-1200, 900, -1600); moon.scale.set(260, 260, 1); scene.add(moon);
+    moon.position.set(-1200, 900, -1600); moon.scale.set(260, 260, 1); G.skyGroup.add(moon);
     const t0 = performance.now();
     G.city = NR.City.build(scene);
     console.log('City built in', Math.round(performance.now() - t0), 'ms; boxes:', G.city.collider.boxes.length);
@@ -164,10 +171,15 @@
   G.applySettings = () => {
     const S = G.settings;
     NR.Audio.setVolumes(S.master, S.music, S.sfx);
-    const pr = S.quality === 'low' ? 0.7 : Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = window.devicePixelRatio || 1;
+    const low = S.quality === 'low';
+    const pr = low ? Math.min(dpr, 1) * (NR.Touch.enabled ? 0.85 : 0.75) : Math.min(dpr, 1.5);
     G.renderer.setPixelRatio(pr);
     G.renderer.setSize(window.innerWidth, window.innerHeight);
-    G.cityWorld.scene.fog.density = S.quality === 'low' ? 0.0052 : 0.0033;
+    G.cityWorld.scene.fog.density = low ? 0.0058 : 0.0033;
+    // low quality: shorter draw distance (fog hides the cut), sky shrinks to stay inside the far plane
+    G.camera.far = low ? 700 : 4000; G.camera.updateProjectionMatrix();
+    G.skyGroup.scale.setScalar(low ? 0.2 : 1);
   };
 
   // ------------------------------------------------------------------ worlds
@@ -519,7 +531,7 @@
     G.missions.refresh();
     NR.Audio.music('explore');
     I.wantLock = true;
-    G.hud.toast('Click the game to lock the mouse · ESC to pause', '#3cc8d4');
+    G.hud.toast(NR.Touch.enabled ? 'Left stick to move · drag right side to look' : 'Click the game to lock the mouse · ESC to pause', '#3cc8d4');
   };
   G.newGameFlow = async function () {
     NR.Audio.init();
@@ -603,6 +615,8 @@
         G.frame(dt);
         R.render(G.world.scene, G.camera);
       }
+      document.body.classList.toggle('playing', G.state === 'play');
+      NR.Touch.update(G);
     } catch (err) {
       console.error(err);
       if (!G.errShown) { G.errShown = true; const e = $('errbox'); e.textContent = 'Error: ' + err.message; e.style.display = 'block'; setTimeout(() => { e.style.display = 'none'; G.errShown = false; }, 6000); }
@@ -611,6 +625,7 @@
   };
 
   G.frame = function (dtReal) {
+    G.skyGroup.position.copy(G.camera.position);
     G.globalKeys();
     if (G.menuOpen) { G.hud.update(0); return; }
     if (G.hitStopT > 0) { G.hitStopT -= dtReal; }

@@ -239,7 +239,8 @@
     ensureTraffic() {
       const G = this.G;
       const traffic = this.list.filter((v) => v.traffic && !v.dead);
-      const want = G.settings.traffic === 0 ? 0 : G.settings.traffic === 2 ? 22 : 14;
+      const tr = +G.settings.traffic;
+      const want = Math.round((tr === 0 ? 0 : tr === 2 ? 22 : 14) * (G.settings.quality === 'low' ? 0.6 : 1));
       for (let k = traffic.length; k < want; k++) {
         // spawn near player, but out of sight-ish
         const pi = U.clamp(Math.round((G.player.pos.x + 680) / 80) + U.randInt(-4, 4), 0, 17);
@@ -379,8 +380,8 @@
     updatePlayerDriving(v, dt) {
       const G = this.G, P = G.player;
       const busy = G.inputBlocked;
-      const th = busy ? 0 : I.axis('KeyS', 'KeyW');
-      const st = busy ? 0 : I.axis('KeyD', 'KeyA');
+      const th = busy ? 0 : I.moveY();
+      const st = busy ? 0 : -I.moveX();
       const hb = !busy && I.down('Space');
       v.drive(dt, th, st, hb);
       P.pos.set(v.pos.x, v.pos.y + (v.def.kind === 'bike' ? 0.15 : 0.0), v.pos.z);

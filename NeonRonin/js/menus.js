@@ -18,7 +18,7 @@
       this.modal.addEventListener('input', (e) => { const t = e.target; if (t.dataset.set) this.setSetting(t.dataset.set, t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value); });
       this.modal.addEventListener('change', (e) => { const t = e.target; if (t.dataset.set && t.tagName === 'SELECT') this.setSetting(t.dataset.set, t.value); });
       $('map-canvas').addEventListener('click', (e) => this.mapClick(e));
-      $('title').addEventListener('click', (e) => { const t = e.target.closest('[data-a]'); if (t) { NR.Audio.init(); this.action(t.dataset.a, t.dataset.v, t); } });
+      $('title').addEventListener('click', (e) => { const t = e.target.closest('[data-a]'); if (t) { NR.Audio.init(); if (t.dataset.a === 'title-new' || t.dataset.a === 'title-cont') NR.Touch.fullscreen(); this.action(t.dataset.a, t.dataset.v, t); } });
     }
 
     get open() { return this.modal.classList.contains('show'); }
@@ -113,6 +113,7 @@
         ['B', 'Call your owned vehicle'], ['V', 'Camera distance'], ['M', 'Map'], ['J', 'Missions'], ['I / TAB', 'Character, skills & loadout'], ['ESC', 'Pause / skip cutscene'],
         ['Driving', 'W/S throttle & brake · A/D steer · SPACE handbrake · E exit'],
       ];
+      if (NR.Touch.enabled) rows.splice(0, rows.length, ['Left side', 'Floating stick: move. Push to the edge to sprint'], ['Right side', 'Drag to look around (you can also drag while holding ATK or BLOCK)'], ['ATK', 'Tap to attack / fire · hold to charge a heavy strike'], ['BLOCK / AIM', 'Hold to block & parry, or aim a ranged weapon'], ['JUMP', 'Jump · hold against a wall to climb · hold while falling to glide'], ['ROLL', 'Dodge roll · slide while sprinting'], ['HOOK', 'Grapple to the point in the screen center'], ['KI / KI ›', 'Use / cycle your Ki power'], ['ACT', 'Interact, assassinate, enter shops and vehicles (lights up when available)'], ['SWAP / RLD', 'Swap blade and ranged weapon / reload'], ['HEAL / TONIC', 'Use healing / Ki items'], ['CAR', 'Call your owned vehicle'], ['☰ MAP CAM', 'Pause menu, map, camera distance'], ['Driving', 'Stick up/down: throttle & brake, sideways: steer. BRAKE drifts, EXIT gets off']);
       this.show('<h2>Controls</h2><table class="ctl">' + rows.map((r) => '<tr><td><kbd>' + r[0] + '</kbd></td><td>' + r[1] + '</td></tr>').join('') + '</table><div class="row"><button class="btn" data-a="' + (fromTitle ? 'close' : 'tab') + '" data-v="settings">Back</button></div>', { kind: 'controls' });
     }
     credits() {

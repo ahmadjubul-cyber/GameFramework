@@ -27,9 +27,9 @@
       back2.position.set(-4.5, 3.4, -6.5); back2.rotation.y = 0.4; this.scene.add(back2);
       this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
       this.rot = 0.4; this.drag = null; this.zoom = 0;
-      this.el.addEventListener('mousedown', (e) => { if (e.target.closest('#creator-panel')) return; this.drag = e.clientX; });
-      window.addEventListener('mouseup', () => { this.drag = null; });
-      window.addEventListener('mousemove', (e) => { if (this.drag != null) { this.rot += (e.clientX - this.drag) * 0.01; this.drag = e.clientX; } });
+      this.el.addEventListener('pointerdown', (e) => { if (e.target.closest('#creator-panel')) return; this.drag = e.clientX; });
+      window.addEventListener('pointerup', () => { this.drag = null; });
+      window.addEventListener('pointermove', (e) => { if (this.drag != null) { this.rot += (e.clientX - this.drag) * 0.01; this.drag = e.clientX; } });
       this.el.addEventListener('wheel', (e) => { if (!e.target.closest('#creator-panel')) this.zoom = U.clamp(this.zoom + Math.sign(e.deltaY) * 0.3, -1, 1.5); }, { passive: true });
       this.panel.addEventListener('click', (e) => { const t = e.target.closest('[data-k]'); if (t) this.pick(t.dataset.k, t.dataset.v); });
       this.panel.addEventListener('input', (e) => {
