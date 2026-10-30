@@ -29,10 +29,12 @@
     window.addEventListener('mouseup', (e) => { I.mb[e.button] = false; I.mbReleased[e.button] = true; });
     window.addEventListener('mousemove', (e) => {
       I.mouseX = e.clientX; I.mouseY = e.clientY;
-      if (I.locked) { I.dx += e.movementX || 0; I.dy += e.movementY || 0; }
+      if (I.locked || (I.freeLook && I.wantLock)) { I.dx += e.movementX || 0; I.dy += e.movementY || 0; }
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('wheel', (e) => { I.wheel += Math.sign(e.deltaY); }, { passive: true });
+    // pointer lock can be blocked (embedded frames): fall back to free mouse-look
+    document.addEventListener('pointerlockerror', () => { I.freeLook = true; });
     document.addEventListener('pointerlockchange', () => {
       I.locked = document.pointerLockElement === canvas;
       if (!I.locked && I.onUnlock) I.onUnlock();
@@ -40,7 +42,7 @@
   };
 
   I.requestLock = function () {
-    try { const p = I.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ }
+    try { const p = I.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { I.freeLook = true; }); } catch (e) { I.freeLook = true; }
   };
   I.exitLock = function () { if (document.pointerLockElement) document.exitPointerLock(); };
 

@@ -61,7 +61,7 @@
     jz.addEventListener('pointerdown', (e) => {
       if (joyId !== null) return;
       joyId = e.pointerId; ox = e.clientX; oy = e.clientY;
-      jz.setPointerCapture(e.pointerId);
+      try { jz.setPointerCapture(e.pointerId); } catch (er) { /* synthetic pointer */ }
       T.stick.style.left = ox + 'px'; T.stick.style.top = oy + 'px';
       T.stick.classList.add('on');
       T.knob.style.transform = '';
@@ -92,7 +92,7 @@
     lz.addEventListener('pointerdown', (e) => {
       if (lookId !== null) return;
       lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
-      lz.setPointerCapture(e.pointerId);
+      try { lz.setPointerCapture(e.pointerId); } catch (er) { /* synthetic pointer */ }
       T.lastLook = performance.now();
       e.preventDefault();
     });
@@ -113,7 +113,7 @@
         e.preventDefault(); e.stopPropagation();
         if (pid !== null) return;
         pid = e.pointerId; bx = e.clientX; by = e.clientY;
-        b.setPointerCapture(e.pointerId);
+        try { b.setPointerCapture(e.pointerId); } catch (er) { /* synthetic pointer */ }
         b.classList.add('on');
         press(k);
         if (navigator.vibrate && (k === 'm0' || k === 'Space')) { try { navigator.vibrate(8); } catch (er) { /* */ } }

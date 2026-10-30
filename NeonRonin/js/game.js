@@ -26,7 +26,11 @@
         // keep yaw consistent so gameplay resumes facing the same way
         return;
       }
-      const locked = (I.locked || I.touchLook) && !G.inputBlocked;
+      const locked = (I.locked || I.touchLook || I.freeLook) && !G.inputBlocked;
+      if (!G.inputBlocked) { // arrow keys always turn the camera too
+        this.yaw += (I.axis('ArrowRight', 'ArrowLeft')) * 2.4 * dt; this.pitch += I.axis('ArrowDown', 'ArrowUp') * 1.6 * dt;
+        if (I.down('ArrowLeft') || I.down('ArrowRight') || I.down('ArrowUp') || I.down('ArrowDown')) this.idleT = 0;
+      }
       const sens = 0.0022 * (S.sens || 1) * (P.aiming ? 0.6 / (P.weapon() && P.weapon().zoom || 1) : 1);
       if (locked) {
         this.yaw -= I.dx * sens;

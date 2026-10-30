@@ -33,7 +33,7 @@
   };
   STEPS.comms = { enter(r, s) { r.G.cutscene.comms(s.lines); }, update() { return true; } };
   STEPS.panel = { enter(r, s) { s.done = false; r.G.cutscene.panels(s.panel).then(() => { s.done = true; }); }, update(r, s) { return s.done; } };
-  STEPS.wait = { enter(r, s) { s.t = s.time || 1; }, update(r, s, dt) { s.t -= dt; return s.t <= 0; } };
+  STEPS.wait = { enter(r, s) { s.tm = s.time || 1; }, update(r, s, dt) { s.tm -= dt; return s.tm <= 0; } };
 
   STEPS.tut = {
     enter(r, s) { r.G.tutFlags[s.check] = false; },
@@ -154,7 +154,7 @@
 
   STEPS.defend = {
     enter(r, s) {
-      s.p = r.res(s.at); s.t = s.time; s.spawnT = 3; s.list = [];
+      s.p = r.res(s.at); s.tm = s.time; s.spawnT = 3; s.list = [];
       if (s.start) s.list.push(...r.spawnWave(s.start, s.p, { minR: 12, spread: 24 }));
       if (s.npc) {
         s.npcHp = 100;
@@ -162,7 +162,7 @@
       }
     },
     update(r, s, dt) {
-      s.t -= dt; s.spawnT -= dt;
+      s.tm -= dt; s.spawnT -= dt;
       s.list = s.list.filter((e) => !e.dead);
       if (s.spawnT <= 0 && s.list.length < 9) { s.spawnT = s.every || 8; s.list.push(...r.spawnWave(s.wave, s.p, { minR: 14, spread: 26 })); }
       if (s.actor) {
@@ -173,9 +173,9 @@
         s.actor.lookAt = r.nearest(s.list) ? r.nearest(s.list).pos : null;
       }
       r.setObj(s.text, U.dist3(r.G.player.pos, s.p) > 30 ? s.p : null);
-      r.objTimer = s.t;
+      r.objTimer = s.tm;
       r.objExtra = s.npc ? NR.Data.CHARACTERS[s.npc].name.split(' ').slice(-1)[0] + ' HP: ' + Math.max(0, Math.round(s.npcHp)) + '%' : 'Hold out!';
-      if (s.t <= 0) { s.list.forEach((e) => { if (!e.dead) e.die({ noRewards: true }); }); return true; }
+      if (s.tm <= 0) { s.list.forEach((e) => { if (!e.dead) e.die({ noRewards: true }); }); return true; }
       return false;
     },
     exit(r, s) { if (s.actor) r.G.cutscene.removeActor(s.actor); },
@@ -333,7 +333,7 @@
       const G = r.G;
       s.cps = s.checkpoints.map((k) => r.res(k));
       s.base = r.res(s.at);
-      s.i = 0; s.phase = 'mount'; s.t = s.time; s.finishOrder = []; s.rivalN = typeof s.rivals === 'number' ? s.rivals : 3; s.rivals = [];
+      s.i = 0; s.phase = 'mount'; s.tm = s.time; s.finishOrder = []; s.rivalN = typeof s.rivals === 'number' ? s.rivals : 3; s.rivals = [];
       const P = G.player;
       if (P.state !== 'vehicle') {
         const want = G.save.favVehicle && NR.Data.VEHICLES[G.save.favVehicle].kind === 'bike' ? G.save.favVehicle : (s.spawn || 'bike');
@@ -370,8 +370,8 @@
         return false;
       }
       // racing
-      s.t -= dt; r.objTimer = s.t;
-      if (s.t <= 0) { r.fail('Out of time'); return false; }
+      s.tm -= dt; r.objTimer = s.tm;
+      if (s.tm <= 0) { r.fail('Out of time'); return false; }
       s.rivals.forEach((v) => { if (!v.finished && v.pathI >= v.path.length) { v.finished = true; s.finishOrder.push(v); } });
       const cp = s.cps[s.i];
       s.rings.forEach((m, k) => { m.visible = k === s.i || k === s.i + 1; m.material.opacity = k === s.i ? 0.85 : 0.3; });
@@ -399,16 +399,16 @@
   };
 
   STEPS.parkour = {
-    enter(r, s) { s.cps = s.checkpoints.map((k) => r.res(k)); s.i = 0; s.t = s.time; s.started = false; ringsFor(r, s, s.cps, 0xd9853a); },
+    enter(r, s) { s.cps = s.checkpoints.map((k) => r.res(k)); s.i = 0; s.tm = s.time; s.started = false; ringsFor(r, s, s.cps, 0xd9853a); },
     update(r, s, dt) {
       const P = r.G.player;
       const cp = s.cps[s.i];
       s.rings.forEach((m, k) => { m.visible = k === s.i || k === s.i + 1; m.material.opacity = k === s.i ? 0.85 : 0.3; });
-      if (s.started) { s.t -= dt; r.objTimer = s.t; if (s.t <= 0) { r.fail('Out of time'); return false; } }
+      if (s.started) { s.tm -= dt; r.objTimer = s.tm; if (s.tm <= 0) { r.fail('Out of time'); return false; } }
       if (P.state !== 'vehicle' && Math.hypot(P.pos.x - cp.x, P.pos.z - cp.z) < 6 && P.pos.y > cp.y - 1.8) {
         s.i++; NR.Audio.play('beep', 1);
         if (!s.started) { s.started = true; r.G.hud.toast('GO! Timer started', '#d9853a'); }
-        if (s.i >= s.cps.length) { r.G.hud.banner('COURSE COMPLETE', Math.round(s.time - s.t) + ' seconds', '#d9853a'); return true; }
+        if (s.i >= s.cps.length) { r.G.hud.banner('COURSE COMPLETE', Math.round(s.time - s.tm) + ' seconds', '#d9853a'); return true; }
       }
       r.setObj(s.started ? s.text : 'Reach the first rooftop checkpoint to start', s.cps[s.i]);
       r.objExtra = 'Checkpoint ' + s.i + '/' + s.cps.length;

@@ -42,7 +42,7 @@
     e.fillStyle = '#000'; e.fillRect(0, 0, S, S);
     const base = { glass: '#0c1018', concrete: '#17171b', slum: '#1b1714', industrial: '#16181b', shoji: '#150e0a', kuroda: '#060608' }[style];
     m.fillStyle = base; m.fillRect(0, 0, S, S);
-    noise(m, S, S, style === 'glass' || style === 'kuroda' ? 6 : 16);
+    noise(m, S, S, style === 'glass' || style === 'kuroda' ? 5 : 8);
     const lit = LIT[style];
     const litP = { glass: 0.34, concrete: 0.26, slum: 0.28, industrial: 0.08, shoji: 0.5, kuroda: 0.14 }[style];
     const cols = style === 'shoji' ? 4 : style === 'industrial' ? 4 : 8, rows = style === 'shoji' ? 4 : style === 'industrial' ? 4 : 6;
