@@ -1,17 +1,31 @@
 // NEON RONIN - procedural animated humanoid (player, NPCs, enemies)
+// Smooth tapered limbs, layered outfits and detailed heads, built from cached primitives.
 (function () {
   const U = NR.U;
   const H = NR.Humanoid = {};
+  const SEG = 10;
+  const k3 = (v) => (+v).toFixed(3);
 
+  function tube(parent, rTop, rBot, len, mat, x, y, z, sz, o) {
+    o = o || {};
+    const key = 'tube' + k3(rTop) + '_' + k3(rBot) + '_' + k3(len) + (o.open ? 'o' : '') + (o.ts != null ? '_' + o.ts + '_' + o.tl : '');
+    const g = U.cachedGeo(key, () => new THREE.CylinderGeometry(rTop, rBot, len, o.seg || SEG, 1, !!o.open, o.ts || 0, o.tl || Math.PI * 2));
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(x || 0, y || 0, z || 0);
+    if (sz) m.scale.z = sz;
+    parent.add(m);
+    return m;
+  }
+  function ball(parent, sx, sy, sz, x, y, z, mat, seg) {
+    const s = seg || 12;
+    const g = U.cachedGeo('ball' + s, () => new THREE.SphereGeometry(1, s, Math.max(6, s - 3)));
+    const m = new THREE.Mesh(g, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); parent.add(m); return m;
+  }
   function part(parent, w, h, d, x, y, z, mat) {
     const m = new THREE.Mesh(U.boxGeo(w, h, d), mat);
     m.position.set(x, y, z);
     parent.add(m);
     return m;
-  }
-  function ball(parent, sx, sy, sz, x, y, z, mat, seg) {
-    const g = U.cachedGeo('ball' + (seg || 10), () => new THREE.SphereGeometry(1, seg || 10, Math.max(6, (seg || 10) - 2)));
-    const m = new THREE.Mesh(g, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); parent.add(m); return m;
   }
   function cone(parent, r, h, x, y, z, mat, rx, rz, seg) {
     const g = U.cachedGeo('cone' + (seg || 6), () => new THREE.ConeGeometry(1, 1, seg || 6));
@@ -19,6 +33,7 @@
   }
   const joint = (parent, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; };
 
+  H.lowQuality = false;
   H.create = function (look, opts) {
     opts = opts || {};
     const h = { look: Object.assign({}, look), opts, root: new THREE.Group(), t: 0, phase: 0, flashT: 0, weapons: {}, mats: {} };
@@ -29,15 +44,16 @@
   function makeMats(h) {
     const L = h.look;
     const m = h.mats;
-    const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
-    m.skin = lam(L.skin);
-    m.c1 = lam(L.c1); m.c2 = lam(L.c2);
-    m.hair = lam(L.hairColor || 0x111111);
-    m.dark = lam(0x121216);
+    const mk = (c, shin) => H.lowQuality ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshPhongMaterial({ color: c, shininess: shin || 8, specular: 0x1c1c22 });
+    m.skin = mk(L.skin, 14);
+    m.c1 = mk(L.c1, 10); m.c2 = mk(L.c2, 6);
+    m.hair = mk(L.hairColor || 0x111111, 20);
+    m.dark = mk(0x111216, 28);
     m.acc = new THREE.MeshBasicMaterial({ color: L.c3 || 0x3cc8d4 });
     m.eye = new THREE.MeshBasicMaterial({ color: L.eyes || 0xffffff });
-    m.scarf = lam(L.scarf || L.c3 || 0xd8455f);
-    h.flashMats = [m.skin, m.c1, m.c2, m.hair, m.dark, m.scarf];
+    m.scarf = mk(L.scarf || L.c3 || 0xd8455f, 6);
+    m.shell = mk(L.c1, 10); m.shell.side = THREE.DoubleSide;
+    h.flashMats = [m.skin, m.c1, m.c2, m.hair, m.dark, m.scarf, m.shell];
   }
 
   function build(h) {
@@ -47,111 +63,152 @@
     makeMats(h);
     const M = h.mats;
     const b = L.build || 1, fem = !!L.female;
-    const sh = fem ? 0.9 : 1, hp = fem ? 1.06 : 1;
+    const sh = fem ? 0.88 : 1, hp = fem ? 1.08 : 1;
     const outfit = L.outfit || 'jacket';
+    const bare = outfit === 'oni';
     const s = (h.opts.scale || 1) * (L.height || 1);
     root.scale.setScalar(s);
     h.scale = s;
 
     const body = h.body = joint(root, 0, 0.94, 0);
     // pelvis
-    part(body, 0.32 * b * hp, 0.18, 0.2, 0, 0.0, 0, outfit === 'oni' ? M.c1 : M.c2);
-    const torso = h.torso = joint(body, 0, 0.04, 0);
-    const bareTorso = outfit === 'oni';
-    part(torso, 0.29 * b, 0.22, 0.19, 0, 0.11, 0, bareTorso ? M.skin : M.c1);
-    part(torso, 0.4 * b * sh, 0.3, 0.23, 0, 0.33, 0, bareTorso ? M.skin : M.c1);
-    part(torso, 0.1, 0.1, 0.1, 0, 0.5, 0, M.skin);
-    // belt / sash
-    if (outfit === 'gi' || outfit === 'kimono') part(torso, 0.31 * b, 0.07, 0.21, 0, 0.02, 0, M.acc);
-    else part(torso, 0.3 * b, 0.04, 0.2, 0, 0.0, 0, M.dark);
-    if (outfit === 'jacket' || outfit === 'coat' || outfit === 'regalia') {
-      part(torso, 0.3 * b * sh, 0.06, 0.25, 0, 0.47, -0.01, M.c2); // collar
-      part(torso, 0.012, 0.3, 0.01, 0.06, 0.3, 0.118, M.acc);
-    }
-    if (outfit === 'gi' || outfit === 'kimono') {
-      part(torso, 0.06, 0.2, 0.01, -0.04, 0.38, 0.118, M.skin);
-      part(torso, 0.025, 0.28, 0.012, 0.03, 0.34, 0.12, M.c2);
+    tube(body, 0.13 * b * hp, 0.142 * b * hp, 0.17, bare ? M.c1 : M.c2, 0, 0, 0, 0.72);
+    const torso = h.torso = joint(body, 0, 0.05, 0);
+    const top = bare ? M.skin : M.c1;
+    // waist + chest (V taper)
+    tube(torso, 0.142 * b, 0.128 * b * hp, 0.18, top, 0, 0.09, 0, 0.68);
+    tube(torso, 0.198 * b * sh, 0.148 * b, 0.28, top, 0, 0.31, 0, 0.62);
+    if (fem) ball(torso, 0.13 * b, 0.065, 0.055, 0, 0.32, 0.055, top, 10);
+    // shoulders, neck
+    ball(torso, 0.074 * b, 0.068, 0.074, 0.19 * b * sh, 0.425, 0, top, 10);
+    ball(torso, 0.074 * b, 0.068, 0.074, -0.19 * b * sh, 0.425, 0, top, 10);
+    tube(torso, 0.046, 0.054, 0.1, M.skin, 0, 0.5, 0);
+
+    // ---- outfit layers on the torso
+    if (outfit === 'jacket') {
+      tube(torso, 0.212 * b * sh, 0.166 * b, 0.46, M.c1, 0, 0.22, 0, 0.66);
+      part(torso, 0.034, 0.42, 0.01, 0, 0.22, 0.112 * b, M.c2);
+      ball(torso, 0.12 * b, 0.065, 0.075, 0, 0.47, -0.085, M.c1, 10);
+      tube(torso, 0.168 * b, 0.168 * b, 0.035, M.c2, 0, -0.005, 0, 0.68);
+      part(torso, 0.006, 0.36, 0.006, 0.04, 0.24, 0.114 * b, M.acc);
+    } else if (outfit === 'gi' || outfit === 'kimono') {
+      const lap = outfit === 'kimono' ? M.acc : M.c2;
+      const l1 = part(torso, 0.032, 0.3, 0.012, 0.035, 0.34, 0.098 * b, lap); l1.rotation.z = 0.42;
+      const l2 = part(torso, 0.032, 0.3, 0.012, -0.035, 0.34, 0.1 * b, lap); l2.rotation.z = -0.42;
+      part(torso, 0.05, 0.12, 0.008, 0, 0.42, 0.094 * b, M.skin);
+      tube(torso, 0.154 * b, 0.15 * b * hp, outfit === 'kimono' ? 0.11 : 0.07, outfit === 'kimono' ? M.c2 : M.acc, 0, 0.02, 0, 0.7);
+    } else if (outfit === 'coat' || outfit === 'regalia') {
+      tube(torso, 0.214 * b * sh, 0.17 * b, 0.46, M.c1, 0, 0.22, 0, 0.67);
+      tube(torso, 0.075, 0.095, 0.09, M.c1, 0, 0.5, -0.008, 0.95);
+      part(torso, 0.03, 0.42, 0.01, 0.03, 0.22, 0.114 * b, M.c2);
+      part(torso, 0.006, 0.42, 0.006, -0.012, 0.22, 0.116 * b, M.acc);
+    } else if (outfit === 'stealth') {
+      part(torso, 0.006, 0.42, 0.006, 0.075 * b, 0.24, 0.1 * b, M.acc);
+      part(torso, 0.006, 0.42, 0.006, -0.075 * b, 0.24, 0.1 * b, M.acc);
+      tube(torso, 0.15 * b, 0.15 * b, 0.03, M.dark, 0, 0.0, 0, 0.7);
+    } else if (outfit === 'oni') {
+      tube(torso, 0.15 * b, 0.15 * b, 0.05, M.acc, 0, 0.0, 0, 0.7);
+      part(torso, 0.14, 0.11, 0.01, 0, 0.36, 0.088 * b, M.skin);
     }
     if (outfit === 'armor' || outfit === 'regalia') {
-      part(torso, 0.43 * b * sh, 0.24, 0.27, 0, 0.36, 0, M.c1);
-      part(torso, 0.3 * b, 0.015, 0.012, 0, 0.42, 0.137, M.acc);
+      tube(torso, 0.218 * b * sh, 0.172 * b, 0.3, M.c1, 0, 0.32, 0, 0.7);
+      tube(torso, 0.152 * b, 0.14 * b, 0.15, M.c2, 0, 0.1, 0, 0.72);
+      part(torso, 0.26 * b, 0.008, 0.008, 0, 0.42, 0.118 * b, M.acc);
     }
-    if (outfit === 'stealth') {
-      part(torso, 0.012, 0.42, 0.012, 0.1, 0.25, 0.12, M.acc);
-      part(torso, 0.012, 0.42, 0.012, -0.1, 0.25, 0.12, M.acc);
+    if (outfit !== 'gi' && outfit !== 'kimono' && outfit !== 'oni' && outfit !== 'stealth') {
+      tube(torso, 0.146 * b, 0.146 * b * hp, 0.035, M.dark, 0, 0.0, 0, 0.7);
+      part(torso, 0.04, 0.03, 0.01, 0, 0.0, 0.102 * b, M.acc);
     }
-    if (outfit === 'oni') {
-      part(torso, 0.42 * b, 0.05, 0.25, 0, 0.0, 0, M.acc);
-      part(torso, 0.12, 0.12, 0.012, -0.08, 0.36, 0.118, M.skin);
-    }
+
     // back slot (sheathed weapon)
-    const backOuter = joint(torso, 0, 0.32, -0.15); backOuter.rotation.z = 0.75;
+    const backOuter = joint(torso, 0, 0.3, -0.13); backOuter.rotation.z = 0.75;
     h.back = joint(backOuter, 0, 0, 0); h.back.rotation.x = Math.PI / 2;
-    // head
+
+    // ---- head
     const head = h.head = joint(torso, 0, 0.54, 0);
-    ball(head, 0.122, 0.142, 0.13, 0, 0.12, 0.005, M.skin, 12);
-    part(head, 0.035, 0.016, 0.012, 0.045, 0.13, 0.122, M.eye);
-    part(head, 0.035, 0.016, 0.012, -0.045, 0.13, 0.122, M.eye);
-    if (L.beard) part(head, 0.16, 0.08, 0.06, 0, 0.02, 0.095, M.hair);
+    ball(head, 0.1, 0.12, 0.11, 0, 0.135, -0.004, M.skin, 14);
+    ball(head, 0.08, 0.068, 0.088, 0, 0.065, 0.012, M.skin, 12);
+    part(head, 0.016, 0.03, 0.02, 0, 0.098, 0.1, M.skin);
+    part(head, 0.03, 0.01, 0.01, 0.038, 0.128, 0.098, M.eye);
+    part(head, 0.03, 0.01, 0.01, -0.038, 0.128, 0.098, M.eye);
+    part(head, 0.034, 0.007, 0.01, 0.038, 0.145, 0.099, M.hair);
+    part(head, 0.034, 0.007, 0.01, -0.038, 0.145, 0.099, M.hair);
+    ball(head, 0.016, 0.026, 0.016, 0.1, 0.118, 0.0, M.skin, 8);
+    ball(head, 0.016, 0.026, 0.016, -0.1, 0.118, 0.0, M.skin, 8);
+    if (L.beard) ball(head, 0.068, 0.05, 0.05, 0, 0.035, 0.07, M.hair, 10);
     hair(h, head, L.hair || 'short');
     mask(h, head, L.mask || 'none');
     hat(h, head, L.hat || 'none');
-    // arms (right arm is -X when facing +Z)
-    const armMatU = bareTorso ? M.skin : M.c1;
-    const armMatL = outfit === 'gi' ? M.c2 : bareTorso ? M.skin : M.c1;
-    const wideSleeve = outfit === 'kimono';
+
+    // ---- arms (right arm is -X when facing +Z)
+    const armU = bare ? M.skin : M.c1;
+    const armL = outfit === 'gi' ? M.c2 : bare ? M.skin : M.c1;
     const mkArm = (side) => {
-      const x = side * 0.245 * b * sh;
-      const shj = joint(torso, x, 0.45, 0);
-      part(shj, 0.105 * b, 0.3, 0.11, 0, -0.14, 0, armMatU);
-      if (outfit === 'armor' || outfit === 'regalia') part(shj, 0.16 * b, 0.09, 0.17, side * 0.02, -0.01, 0, M.c1);
-      if (outfit === 'regalia') part(shj, 0.165 * b, 0.015, 0.175, side * 0.02, -0.06, 0, M.acc);
-      const el = joint(shj, 0, -0.29, 0);
-      part(el, wideSleeve ? 0.16 : 0.095 * b, 0.27, wideSleeve ? 0.16 : 0.1, 0, -0.13, 0, armMatL);
-      if (outfit === 'jacket' || outfit === 'stealth') part(el, 0.1 * b, 0.015, 0.105, 0, -0.22, 0, M.acc);
-      const hand = joint(el, 0, -0.28, 0);
-      part(hand, 0.085, 0.1, 0.09, 0, -0.03, 0.0, outfit === 'oni' ? M.skin : M.dark);
+      const x = side * 0.2 * b * sh;
+      const shj = joint(torso, x, 0.42, 0);
+      tube(shj, 0.052 * b, 0.045 * b, 0.27, armU, 0, -0.135, 0);
+      if (outfit === 'armor' || outfit === 'regalia') {
+        const pad = ball(shj, 0.1 * b, 0.055, 0.095, side * 0.025, 0.0, 0, M.c1, 10); pad.rotation.z = side * 0.35;
+        if (outfit === 'regalia') part(shj, 0.012, 0.012, 0.16, side * 0.11, -0.03, 0, M.acc);
+      }
+      const el = joint(shj, 0, -0.28, 0);
+      ball(el, 0.045 * b, 0.045, 0.045 * b, 0, 0, 0, armU, 8);
+      if (outfit === 'kimono') tube(el, 0.07 * b, 0.1 * b, 0.25, M.c1, 0, -0.125, 0, 1, { open: true });
+      else tube(el, 0.045 * b, 0.036 * b, 0.25, (outfit === 'armor' || outfit === 'regalia') ? M.c1 : armL, 0, -0.125, 0);
+      if (outfit === 'jacket' || outfit === 'stealth' || outfit === 'coat') tube(el, 0.04 * b, 0.04 * b, 0.012, M.acc, 0, -0.235, 0);
+      const hand = joint(el, 0, -0.27, 0);
+      const hm = bare ? M.skin : M.dark;
+      part(hand, 0.055, 0.075, 0.042, 0, -0.035, 0.0, hm);
+      part(hand, 0.018, 0.04, 0.02, -side * 0.03, -0.025, 0.018, hm);
       const slot = joint(hand, 0, -0.05, 0);
       return { sh: shj, el, hand, slot };
     };
     const ar = mkArm(-1), al = mkArm(1);
     h.shR = ar.sh; h.elR = ar.el; h.handR = ar.slot;
     h.shL = al.sh; h.elL = al.el; h.handL = al.slot;
-    // legs
-    const wideLeg = outfit === 'gi';
+
+    // ---- legs
+    const wide = outfit === 'gi';
+    const legM = bare ? M.skin : M.c2;
     const mkLeg = (side) => {
-      const hj = joint(body, side * 0.09 * b * hp, -0.04, 0);
-      part(hj, (wideLeg ? 0.17 : 0.14) * b, 0.44, wideLeg ? 0.18 : 0.15, 0, -0.22, 0, outfit === 'oni' ? M.skin : M.c2);
+      const hj = joint(body, side * 0.085 * b * hp, -0.03, 0);
+      if (wide) tube(hj, 0.1 * b, 0.112 * b, 0.44, legM, 0, -0.22, 0);
+      else tube(hj, 0.074 * b, 0.056 * b, 0.44, legM, 0, -0.22, 0);
+      if (outfit === 'stealth') part(hj, 0.006, 0.36, 0.006, side * 0.07 * b, -0.22, 0, M.acc);
       const kn = joint(hj, 0, -0.44, 0);
-      part(kn, (wideLeg ? 0.16 : 0.12) * b, 0.42, wideLeg ? 0.17 : 0.13, 0, -0.2, 0, outfit === 'oni' ? M.skin : M.c2);
-      if (outfit === 'armor') part(kn, 0.14 * b, 0.12, 0.15, 0, -0.02, 0.01, M.c1);
-      part(kn, 0.12 * b, 0.09, 0.25, 0, -0.43, 0.05, M.dark);
-      if (outfit === 'stealth' || outfit === 'jacket') part(kn, 0.125 * b, 0.012, 0.13, 0, -0.36, 0, M.acc);
+      ball(kn, 0.054 * b, 0.05, 0.054 * b, 0, 0, 0.005, legM, 8);
+      if (wide) tube(kn, 0.112 * b, 0.124 * b, 0.36, legM, 0, -0.18, 0);
+      else tube(kn, 0.054 * b, 0.042 * b, 0.42, legM, 0, -0.21, 0);
+      if (outfit === 'armor' || outfit === 'regalia') ball(kn, 0.06 * b, 0.07, 0.04, 0, -0.03, 0.045, M.c1, 8);
+      tube(kn, 0.05, 0.054, 0.16, M.dark, 0, -0.35, 0);
+      part(kn, 0.085, 0.065, 0.21, 0, -0.41, 0.045, M.dark);
       return { hip: hj, knee: kn };
     };
     const lr = mkLeg(-1), ll = mkLeg(1);
     h.hipR = lr.hip; h.knR = lr.knee; h.hipL = ll.hip; h.knL = ll.knee;
-    // robe / coat tails
-    if (outfit === 'coat' || outfit === 'regalia' || outfit === 'kimono') {
-      const tails = h.tails = joint(body, 0, -0.02, 0);
-      const len = outfit === 'kimono' ? 0.85 : 0.62;
-      part(tails, 0.36 * b, len, 0.03, 0, -len / 2, -0.115, M.c1);
-      part(tails, 0.03, len * 0.9, 0.2, 0.17 * b, -len * 0.45, -0.02, M.c1);
-      part(tails, 0.03, len * 0.9, 0.2, -0.17 * b, -len * 0.45, -0.02, M.c1);
-      if (outfit === 'kimono') part(tails, 0.34 * b, len, 0.03, 0, -len / 2, 0.11, M.c1);
-      part(tails, 0.37 * b, 0.02, 0.035, 0, -len + 0.02, -0.115, M.acc);
+
+    // ---- coat tails / robes / loincloth (sway with the hips)
+    h.tails = null;
+    if (outfit === 'coat' || outfit === 'regalia' || outfit === 'kimono' || outfit === 'oni') {
+      const tails = h.tails = joint(body, 0, 0.02, 0);
+      if (outfit === 'oni') tube(tails, 0.15 * b, 0.17 * b, 0.22, M.c1, 0, -0.1, 0, 0.75, { open: true });
+      else {
+        const len = outfit === 'kimono' ? 0.84 : 0.64;
+        tube(tails, 0.156 * b * hp, 0.22 * b * hp, len, M.shell, 0, -len / 2, -0.005, 0.78, { open: true, seg: 12 });
+        tube(tails, 0.222 * b * hp, 0.222 * b * hp, 0.012, M.acc, 0, -len + 0.01, -0.005, 0.78, { open: true, seg: 12 });
+      }
     }
-    // scarf
+    // ---- scarf
     h.scarf = null;
     if (L.scarf) {
       const g = new THREE.Group();
       root.add(g);
       const segs = [];
-      for (let i = 0; i < 7; i++) segs.push(part(g, 0.12, 0.03, 0.15, 0, 0, 0, M.scarf));
+      for (let i = 0; i < 7; i++) segs.push(part(g, 0.1, 0.018, 0.15, 0, 0, 0, M.scarf));
       h.scarf = { g, segs, pts: null };
-      part(torso, 0.2, 0.08, 0.22, 0, 0.5, 0, M.scarf);
+      tube(torso, 0.085, 0.11, 0.09, M.scarf, 0, 0.49, 0, 0.95);
     }
-    // blob shadow
+    // ---- blob shadow
     if (!h.opts.noShadow) {
       const shadow = new THREE.Mesh(U.cachedGeo('blobshadow', () => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; }), U.cachedGeo('blobmat', () => new THREE.MeshBasicMaterial({ map: NR.Tex.shadow, transparent: true, depthWrite: false })));
       shadow.scale.set(0.9, 1, 0.9); shadow.position.y = 0.04;
@@ -165,52 +222,62 @@
   function hair(h, head, style) {
     const M = h.mats.hair;
     if (style === 'bald') return;
-    const cap = () => ball(head, 0.13, 0.12, 0.138, 0, 0.165, -0.012, M, 10);
-    if (style === 'short') { cap(); part(head, 0.2, 0.06, 0.05, 0, 0.21, 0.09, M); }
+    const cap = () => ball(head, 0.108, 0.104, 0.12, 0, 0.17, -0.014, M, 12);
+    if (style === 'short') { cap(); const f = part(head, 0.16, 0.035, 0.04, 0, 0.215, 0.08, M); f.rotation.x = 0.35; }
     if (style === 'spiky') {
       cap();
-      for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.2; cone(head, 0.05, 0.16, Math.sin(a) * 0.08, 0.26, Math.cos(a) * 0.02 - 0.03, M, -0.5 + Math.cos(a) * 0.1, -a * 0.5); }
+      for (let i = 0; i < 9; i++) { const a = (i / 8 - 0.5) * 2.4; cone(head, 0.03, 0.12, Math.sin(a) * 0.07, 0.25 - Math.abs(a) * 0.02, Math.cos(a) * 0.01 - 0.04, M, -0.75, -a * 0.45); }
+      const f = part(head, 0.15, 0.03, 0.04, 0, 0.215, 0.08, M); f.rotation.x = 0.5;
     }
-    if (style === 'long') { cap(); part(head, 0.23, 0.42, 0.06, 0, -0.03, -0.115, M); part(head, 0.06, 0.3, 0.08, 0.12, 0.05, -0.04, M); part(head, 0.06, 0.3, 0.08, -0.12, 0.05, -0.04, M); }
-    if (style === 'topknot') { cap(); ball(head, 0.05, 0.06, 0.05, 0, 0.3, -0.04, M); part(head, 0.02, 0.02, 0.02, 0, 0.27, -0.04, h.mats.acc); }
-    if (style === 'mohawk') { part(head, 0.045, 0.14, 0.26, 0, 0.27, -0.02, M); }
-    if (style === 'bob') { ball(head, 0.145, 0.13, 0.15, 0, 0.15, -0.01, M); part(head, 0.29, 0.15, 0.08, 0, 0.07, -0.08, M); part(head, 0.22, 0.05, 0.05, 0, 0.215, 0.1, M); }
-    if (style === 'buns') { cap(); ball(head, 0.06, 0.06, 0.06, 0.09, 0.27, -0.05, M); ball(head, 0.06, 0.06, 0.06, -0.09, 0.27, -0.05, M); }
+    if (style === 'long') {
+      cap();
+      tube(head, 0.085, 0.06, 0.42, M, 0, -0.02, -0.085, 0.5);
+      tube(head, 0.022, 0.016, 0.24, M, 0.096, 0.06, 0.035); tube(head, 0.022, 0.016, 0.24, M, -0.096, 0.06, 0.035);
+    }
+    if (style === 'topknot') { cap(); ball(head, 0.042, 0.05, 0.042, 0, 0.275, -0.05, M, 10); tube(head, 0.02, 0.02, 0.02, h.mats.acc, 0, 0.245, -0.045); }
+    if (style === 'mohawk') { for (let i = 0; i < 6; i++) cone(head, 0.022, 0.11, 0, 0.25 - Math.abs(i - 2.5) * 0.01, 0.07 - i * 0.032, M, -0.35, 0, 4); ball(head, 0.103, 0.1, 0.115, 0, 0.162, -0.012, h.mats.skin, 10); }
+    if (style === 'bob') { ball(head, 0.118, 0.114, 0.126, 0, 0.152, -0.01, M, 12); tube(head, 0.034, 0.042, 0.16, M, 0.098, 0.075, -0.01); tube(head, 0.034, 0.042, 0.16, M, -0.098, 0.075, -0.01); const f = part(head, 0.17, 0.04, 0.04, 0, 0.205, 0.088, M); f.rotation.x = 0.25; }
+    if (style === 'buns') { cap(); ball(head, 0.045, 0.045, 0.045, 0.075, 0.255, -0.035, M, 10); ball(head, 0.045, 0.045, 0.045, -0.075, 0.255, -0.035, M, 10); }
   }
   function mask(h, head, kind) {
     const A = h.mats.acc;
     if (kind === 'none') return;
-    if (kind === 'cloth') { part(head, 0.25, 0.12, 0.08, 0, 0.055, 0.1, h.mats.dark); }
-    if (kind === 'visor') { part(head, 0.25, 0.05, 0.06, 0, 0.135, 0.105, A); }
-    if (kind === 'respirator') { part(head, 0.16, 0.09, 0.07, 0, 0.05, 0.12, h.mats.dark); [-1, 1].forEach((s) => ball(head, 0.035, 0.035, 0.035, s * 0.09, 0.04, 0.12, U.mat(0x333333))); part(head, 0.1, 0.012, 0.01, 0, 0.06, 0.158, A); }
-    if (kind === 'oni' || kind === 'hannya') {
-      const red = U.mat(kind === 'oni' ? 0xb3121b : 0xe8e0d0);
-      part(head, 0.22, 0.24, 0.05, 0, 0.11, 0.12, red);
-      part(head, 0.04, 0.012, 0.01, 0.05, 0.14, 0.148, h.mats.eye); part(head, 0.04, 0.012, 0.01, -0.05, 0.14, 0.148, h.mats.eye);
-      part(head, 0.12, 0.02, 0.01, 0, 0.03, 0.148, U.mat(0xffffff));
-      cone(head, 0.025, 0.12, 0.08, 0.27, 0.06, U.mat(0xd4af37), -0.3, -0.3);
-      cone(head, 0.025, 0.12, -0.08, 0.27, 0.06, U.mat(0xd4af37), -0.3, 0.3);
+    if (kind === 'cloth') { ball(head, 0.104, 0.074, 0.104, 0, 0.062, 0.016, h.mats.dark, 12); }
+    if (kind === 'visor') { tube(head, 0.112, 0.112, 0.032, U.mat(h.look.c3 || 0x3cc8d4, { basic: true, side: THREE.DoubleSide }), 0, 0.128, -0.004, 1, { open: true, ts: -1.15, tl: 2.3, seg: 16 }); }
+    if (kind === 'respirator') {
+      part(head, 0.1, 0.065, 0.05, 0, 0.055, 0.095, h.mats.dark);
+      [-1, 1].forEach((s) => { const f = tube(head, 0.024, 0.024, 0.04, U.mat(0x2a2a30), s * 0.065, 0.045, 0.09); f.rotation.z = Math.PI / 2; });
+      part(head, 0.07, 0.006, 0.006, 0, 0.062, 0.121, A);
     }
-    if (kind === 'kitsune') {
-      part(head, 0.21, 0.22, 0.05, 0, 0.11, 0.12, U.mat(0xf2f2f2));
-      part(head, 0.05, 0.08, 0.06, 0, 0.07, 0.16, U.mat(0xf2f2f2));
-      part(head, 0.05, 0.012, 0.01, 0.05, 0.15, 0.148, U.mat(0xd62828)); part(head, 0.05, 0.012, 0.01, -0.05, 0.15, 0.148, U.mat(0xd62828));
-      cone(head, 0.04, 0.1, 0.08, 0.28, 0.0, U.mat(0xf2f2f2), 0, -0.2, 4); cone(head, 0.04, 0.1, -0.08, 0.28, 0.0, U.mat(0xf2f2f2), 0, 0.2, 4);
-    }
-    if (kind === 'tengu') {
-      part(head, 0.22, 0.22, 0.05, 0, 0.11, 0.12, U.mat(0xc0201a));
-      part(head, 0.04, 0.04, 0.16, 0, 0.1, 0.22, U.mat(0xc0201a));
+    if (kind === 'oni' || kind === 'hannya' || kind === 'tengu' || kind === 'kitsune') {
+      const col = { oni: 0x7a1a1e, hannya: 0xd8d2c4, tengu: 0x8a2018, kitsune: 0xe8e8ea }[kind];
+      ball(head, 0.094, 0.112, 0.062, 0, 0.11, 0.06, U.mat(col), 12);
+      part(head, 0.032, 0.008, 0.01, 0.036, 0.13, 0.122, h.mats.eye); part(head, 0.032, 0.008, 0.01, -0.036, 0.13, 0.122, h.mats.eye);
+      if (kind === 'oni' || kind === 'hannya') {
+        part(head, 0.07, 0.012, 0.01, 0, 0.055, 0.118, U.mat(0xe8e4dc));
+        cone(head, 0.018, 0.1, 0.07, 0.26, 0.04, U.mat(0xb8a070), -0.35, -0.35); cone(head, 0.018, 0.1, -0.07, 0.26, 0.04, U.mat(0xb8a070), -0.35, 0.35);
+      }
+      if (kind === 'kitsune') {
+        part(head, 0.04, 0.006, 0.006, 0.04, 0.15, 0.12, U.mat(0xb8302a)); part(head, 0.04, 0.006, 0.006, -0.04, 0.15, 0.12, U.mat(0xb8302a));
+        ball(head, 0.035, 0.045, 0.06, 0, 0.075, 0.115, U.mat(col), 8);
+        cone(head, 0.035, 0.09, 0.07, 0.27, -0.01, U.mat(col), 0, -0.25, 4); cone(head, 0.035, 0.09, -0.07, 0.27, -0.01, U.mat(col), 0, 0.25, 4);
+      }
+      if (kind === 'tengu') { const n = cone(head, 0.02, 0.14, 0, 0.1, 0.17, U.mat(col), Math.PI / 2, 0, 6); n.rotation.x = Math.PI / 2; }
     }
   }
   function hat(h, head, kind) {
     const A = h.mats.acc;
     if (kind === 'none') return;
-    if (kind === 'headband') { part(head, 0.27, 0.04, 0.28, 0, 0.19, 0, A); part(head, 0.03, 0.18, 0.02, 0.03, 0.1, -0.15, A); part(head, 0.03, 0.15, 0.02, -0.02, 0.1, -0.15, A); }
-    if (kind === 'hood') { ball(head, 0.16, 0.17, 0.165, 0, 0.13, -0.02, h.mats.c1, 10); part(head, 0.27, 0.12, 0.1, 0, 0.06, -0.13, h.mats.c1); }
-    if (kind === 'kasa') { cone(head, 0.42, 0.17, 0, 0.32, 0, U.mat(0xc8a26a), 0, 0, 14); }
-    if (kind === 'cap') { part(head, 0.27, 0.08, 0.28, 0, 0.25, -0.01, h.mats.c1); part(head, 0.24, 0.02, 0.14, 0, 0.215, 0.17, h.mats.c1); }
-    if (kind === 'kabuto') { ball(head, 0.15, 0.13, 0.16, 0, 0.19, -0.01, U.mat(0x1a1a22), 10); cone(head, 0.03, 0.22, 0.07, 0.34, 0.1, U.mat(0xd4af37), 0.2, -0.5); cone(head, 0.03, 0.22, -0.07, 0.34, 0.1, U.mat(0xd4af37), 0.2, 0.5); }
-    if (kind === 'horns') { cone(head, 0.04, 0.2, 0.07, 0.3, 0.02, U.mat(0xe8e0c0), -0.2, -0.35); cone(head, 0.04, 0.2, -0.07, 0.3, 0.02, U.mat(0xe8e0c0), -0.2, 0.35); }
+    if (kind === 'headband') { tube(head, 0.113, 0.113, 0.026, A, 0, 0.175, -0.008, 1.08); part(head, 0.02, 0.15, 0.006, 0.02, 0.1, -0.13, A); part(head, 0.02, 0.12, 0.006, -0.015, 0.11, -0.13, A); }
+    if (kind === 'hood') {
+      const g = U.cachedGeo('hoodgeo', () => new THREE.SphereGeometry(1, 14, 10, Math.PI * 0.78, Math.PI * 1.44));
+      const m = new THREE.Mesh(g, h.mats.shell); m.scale.set(0.135, 0.15, 0.142); m.position.set(0, 0.135, -0.012); head.add(m);
+      tube(head, 0.12, 0.135, 0.05, h.mats.c1, 0, 0.0, -0.02, 0.9);
+    }
+    if (kind === 'kasa') { cone(head, 0.36, 0.14, 0, 0.3, 0, U.mat(0x9c8658), 0, 0, 16); tube(head, 0.11, 0.11, 0.02, U.mat(0x2a2218), 0, 0.235, 0); }
+    if (kind === 'cap') { ball(head, 0.11, 0.07, 0.12, 0, 0.2, -0.008, h.mats.c1, 12); part(head, 0.17, 0.012, 0.09, 0, 0.2, 0.12, h.mats.c1); }
+    if (kind === 'kabuto') { ball(head, 0.122, 0.1, 0.13, 0, 0.19, -0.01, U.mat(0x16161c), 12); cone(head, 0.02, 0.2, 0.065, 0.33, 0.09, U.mat(0xb89a5a), 0.2, -0.5); cone(head, 0.02, 0.2, -0.065, 0.33, 0.09, U.mat(0xb89a5a), 0.2, 0.5); }
+    if (kind === 'horns') { cone(head, 0.03, 0.18, 0.062, 0.28, 0.02, U.mat(0xd8d0b8), -0.2, -0.35); cone(head, 0.03, 0.18, -0.062, 0.28, 0.02, U.mat(0xd8d0b8), -0.2, 0.35); }
   }
 
   H.setLook = function (h, look) {
@@ -242,7 +309,7 @@
   H.flash = function (h, t) { h.flashT = Math.max(h.flashT, t || 0.12); };
 
   H.setOpacity = function (h, o) {
-    const all = [h.mats.skin, h.mats.c1, h.mats.c2, h.mats.hair, h.mats.dark, h.mats.acc, h.mats.eye, h.mats.scarf];
+    const all = [h.mats.skin, h.mats.c1, h.mats.c2, h.mats.hair, h.mats.dark, h.mats.acc, h.mats.eye, h.mats.scarf, h.mats.shell];
     all.forEach((m) => { m.transparent = o < 1; m.opacity = o; });
     h.root.traverse((ch) => { if (ch.isMesh && ch.material && !all.includes(ch.material) && ch !== h.shadow) { ch.visible = o > 0.5; } });
   };
@@ -452,7 +519,7 @@
     h.hipR.rotation.x = d(h.hipR.rotation.x, P.hRX, ll); h.hipR.rotation.z = d(h.hipR.rotation.z, P.hRZ, ll);
     h.hipL.rotation.x = d(h.hipL.rotation.x, P.hLX, ll); h.hipL.rotation.z = d(h.hipL.rotation.z, P.hLZ, ll);
     h.knR.rotation.x = d(h.knR.rotation.x, P.kR, ll); h.knL.rotation.x = d(h.knL.rotation.x, P.kL, ll);
-    if (h.tails) h.tails.rotation.x = d(h.tails.rotation.x, 0.15 + P.tails * 0.6 + Math.max(P.hRX, P.hLX) * -0.3, 8);
+    if (h.tails) h.tails.rotation.x = d(h.tails.rotation.x, 0.03 + P.tails * 0.22, 8);
     if (h.shadow) h.shadow.visible = mode !== 'dead' && !s.noShadow;
     // hit flash
     if (h.flashT > 0) {
