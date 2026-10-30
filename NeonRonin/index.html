@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neon Ronin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="fade"></div>
+
+<!-- ============ TITLE ============ -->
+<div id="title" class="overlay">
+  <div class="logo">
+    <div class="kanji">影浪人</div>
+    <h1>NEON <span>RONIN</span></h1>
+    <div class="sub">GHOSTS OF NEO-KAGURA</div>
+  </div>
+  <div class="menu">
+    <button class="btn big hot" id="btn-continue" data-a="title-cont">Continue</button>
+    <button class="btn big" data-a="title-new">New Game</button>
+    <button class="btn big" data-a="title-set">Settings</button>
+    <button class="btn big" data-a="title-ctl">Controls</button>
+    <button class="btn big" data-a="title-cred">Credits</button>
+  </div>
+  <div class="foot">Keyboard + mouse · Headphones recommended</div>
+</div>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div id="vitals">
+    <div class="vrow"><div id="lvl">LV 1</div><div id="cash">¥0</div></div>
+    <div class="bar hp"><div id="hp-lag"></div><div id="hp-fill"></div></div>
+    <div class="bar ki"><div id="ki-fill"></div></div>
+    <div class="bar xp"><div id="xp-fill"></div></div>
+    <div id="buffs"></div>
+  </div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="obj">
+    <div id="obj-title"></div>
+    <div id="obj-text"></div>
+    <div id="obj-extra"></div>
+    <div id="obj-bar"><div id="obj-bar-fill"></div></div>
+    <div id="obj-timer"></div>
+  </div>
+  <div id="weapon">
+    <div id="wname"></div>
+    <div id="wammo"></div>
+    <div id="wslot"></div>
+    <div id="items"></div>
+  </div>
+  <div id="power">
+    <div id="pw-icon">影<div id="pw-cd"></div></div>
+    <div><div id="pw-name"></div><div id="pw-cost"></div><div class="dim tiny">[F] use · [1-9] select</div></div>
+  </div>
+  <div id="bossbar"><div id="boss-name"></div><div id="boss-title"></div><div class="bbar"><div id="boss-lag"></div><div id="boss-fill"></div></div></div>
+  <div id="offmark"><div class="dot"></div><div id="offmark-d"></div></div>
+  <div id="enemybars"></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="scope"></div>
+  <div id="vignette"></div>
+  <div id="toasts"></div>
+  <div id="banner"><div id="banner-t"></div><div id="banner-s"></div></div>
+  <div id="hint"><div class="hint-k">TIP</div><div id="hint-text"></div></div>
+  <div id="prompt"></div>
+  <div id="countdown"></div>
+  <div id="xppop"></div>
+  <div id="district"></div>
+  <div id="mstart"><div id="mstart-cat"></div><div id="mstart-title"></div><div id="mstart-desc"></div></div>
+  <div id="speedo"></div>
+</div>
+<div id="dmgnums"></div>
+
+<!-- ============ DIALOGUE / COMMS / PANELS ============ -->
+<div id="letterbox-top"></div><div id="letterbox-bot"></div>
+<div id="dialogue">
+  <canvas id="dlg-portrait" width="120" height="120"></canvas>
+  <div class="dlg-body"><div id="dlg-name"></div><div id="dlg-text"></div><div class="dlg-hint">E / SPACE / click to continue · ESC to skip</div></div>
+</div>
+<div id="comms"><canvas id="comms-portrait" width="64" height="64"></canvas><div><div id="comms-name"></div><div id="comms-text"></div></div></div>
+<div id="panel">
+  <canvas id="panel-canvas"></canvas>
+  <div id="panel-title"></div>
+  <div id="panel-text"></div>
+  <div id="skip-hint">click / SPACE to continue · ESC to skip</div>
+</div>
+
+<!-- ============ MENUS ============ -->
+<div id="modal"><div id="modal-box" class="modal-box"></div></div>
+<div id="map-wrap"><canvas id="map-canvas" width="700" height="700"></canvas></div>
+<div id="creator"><div id="creator-panel"></div><div class="creator-tip">Drag to rotate · scroll to zoom</div></div>
+<div id="errbox"></div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/data/weapons.js"></script>
+<script src="js/data/powers.js"></script>
+<script src="js/data/items.js"></script>
+<script src="js/data/characters.js"></script>
+<script src="js/data/enemies.js"></script>
+<script src="js/data/story.js"></script>
+<script src="js/data/missions.js"></script>
+<script src="js/world/collision.js"></script>
+<script src="js/world/textures.js"></script>
+<script src="js/world/city.js"></script>
+<script src="js/world/interiors.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/weaponmodels.js"></script>
+<script src="js/humanoid.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemy.js"></script>
+<script src="js/boss.js"></script>
+<script src="js/civilians.js"></script>
+<script src="js/vehicles.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/progression.js"></script>
+<script src="js/missions.js"></script>
+<script src="js/cutscene.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/menus.js"></script>
+<script src="js/creator.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
