@@ -549,6 +549,14 @@
         const score = d + a * 3;
         if (a < 1.6 && score < bd) { bd = score; best = e; }
       }
+      if (best) return best;
+      // nobody in front: turn toward the closest enemy right next to us (flankers)
+      let nd = this.meleeDef().range + 1.6;
+      for (const e of this.G.combat.hittables()) {
+        if (e.dead || e.isVehicle || Math.abs(e.pos.y - this.pos.y) > 2.5) continue;
+        const d = Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z);
+        if (d < nd) { nd = d; best = e; }
+      }
       return best;
     }
 
@@ -562,6 +570,7 @@
       this.atkFacing = null;
       if (tgt) {
         this.atkFacing = Math.atan2(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z);
+        this.yaw = this.atkFacing; // snap so the swing lands on the locked target
         const d = Math.hypot(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z) - (tgt.radius || 0.4);
         if (d > w.range * 0.6) this.lungeV = Math.min(9, (d - w.range * 0.5) * 6);
       } else this.atkFacing = this.G.camRig.yaw;

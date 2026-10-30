@@ -468,7 +468,7 @@
   G.onEnemyKilled = function (e, o) {
     const S = G.save;
     if (e.noRewards || (o && o.noRewards)) return;
-    const xp = (e.def.xp || 10) * (1 + 0.08 * (e.level - 1)) * (e.extraXp || 1);
+    const xp = (e.def.xp || 10) * (1 + 0.04 * (e.level - 1)) * (e.extraXp || 1);
     G.prog.addXP(xp);
     S.stats.kills++;
     if (o && o.assassinated) S.stats.assassinations++;

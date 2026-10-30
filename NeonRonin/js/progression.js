@@ -61,7 +61,7 @@
     implant(id) { return !!this.S.implants[id]; }
     buff(id) { return (this.S.buffs[id] || 0) > 0; }
     weaponMul(wid) { return 1 + 0.15 * ((this.S.weapons[wid] || 1) - 1); }
-    xpNeed(L) { return 200 + 150 * (L - 1); }
+    xpNeed(L) { return 250 + 200 * (L - 1) + 6 * (L - 1) * (L - 1); }
 
     stats() {
       const S = this.S, d = D();
